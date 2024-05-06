@@ -1,0 +1,74 @@
+version: "3"
+services:
+  # Servicio MySQL
+  miservicio_mysql:
+    image: mysql:5.7  # Imagen de MySQL versión 5.7
+    environment:  # Variables de entorno para la configuración de MySQL
+      MYSQL_DATABASE: proyecto  # Nombre de la base de datos
+      MYSQL_ROOT_PASSWORD: m14  # Contraseña del usuario root
+      MYSQL_USER: m14  # Nombre del usuario
+      MYSQL_PASSWORD: m14  # Contraseña del usuario
+    volumes:  # Volumenes para persistir los datos y para el script de inicialización
+      - ./volumenes/mysql:/var/lib/mysql  # Datos de la base de datos
+      - ./bbdd.sql:/docker-entrypoint-initdb.d/bbdd.sql  # Script de inicialización
+    command: --init-file /docker-entrypoint-initdb.d/bbdd.sql  # Ejecutar el script de inicialización
+    expose:  # Exponer el puerto 3306 dentro de la red de Docker
+      - 3306
+    ports:  # Mapear el puerto 3306 del contenedor al puerto 3306 del host
+      - 3306:3306
+       
+  # Servicio PHP
+  miservicio_php:
+    image: php:7-apache  # Imagen de PHP con Apache versión 7
+    volumes:  # Volumen para la aplicación web
+      - ./miweb/:/var/www/html  # Directorio de la aplicación web
+    expose:  # Exponer el puerto 80 dentro de la red de Docker
+      - 80
+    ports:  # Mapear el puerto 80 del contenedor al puerto 80 del host
+      - 80:80
+
+  # Servicio OwnCloud
+  owncloud:
+    image: owncloud  # Imagen de OwnCloud
+    ports:  # Mapear el puerto 80 del contenedor al puerto 8080 del host
+      - 8080:80
+    volumes:  # Volumenes para los datos y la configuración de OwnCloud
+      - ./owncloud/data:/var/www/html/data  # Datos de OwnCloud
+      - ./owncloud/config:/var/www/html/config  # Configuración de OwnCloud
+
+  # Servicio FTP
+  ftp:
+    image: fauria/vsftpd  # Imagen de vsftpd
+    environment:  # Variables de entorno para la configuración de FTP
+      - FTP_USER=m14  # Nombre del usuario
+      - FTP_PASS=m14  # Contraseña del usuario
+      - PASV_ADDRESS=10.7.34.21  # Dirección IP pasiva (debes reemplazar 'your_pasv_address' con la dirección IP correcta)
+    ports:  # Mapear los puertos del contenedor a los puertos del host
+      - "200:21"  # Puerto de control de FTP
+      - "201:20"
+      - "21100-21110:21100-21110"  # Rango de puertos para el modo pasivo de FTP
+    volumes:  # Volumen para los datos del servidor FTP
+      - ./ftp/data:/home/vsftpd
+     
+  
+  # Servicio Adminer
+  adminer:
+    image: adminer  # Imagen de Adminer
+    ports:  # Mapear el puerto 8080 del contenedor al puerto 8000 del host
+      - 8000:8080
+
+  # Servicio cAdvisor
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
+    devices:
+      - /dev/kmsg
+    ports:
+      - 8081:8080
